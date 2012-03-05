@@ -28,8 +28,12 @@ def main():
         elif opt in ("-r", "--record"):
             record = arg
 
-    zone_id = domain_info(apikey, domain)['zone_id']
-    print(zone_test(apikey, zone_id))
+    if check_if_domain_exists(apikey, domain) == False:
+        print ("Domain " + domain + " does not exist")
+        sys.exit()
+
+    #zone_id = domain_info(apikey, domain)['zone_id']
+    #print(zone_test(apikey, zone_id))
 
 def usage():
     print("Usage: gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD")
@@ -45,6 +49,13 @@ def zone_test(apikey, zone_id):
 
 def domain_info(apikey, domain):
     return api.domain.info(apikey, domain)
+
+def check_if_domain_exists(apikey, domain):
+    try:
+        api.domain.info(apikey, domain)
+        return True
+    except xmlrpclib.Fault as err:
+        return False
 
 if __name__ == "__main__":
     main()
