@@ -1,0 +1,7 @@
+Requirements:
+
+- Python (>= 2.7)
+
+Usage:
+
+gandi-dyndns --username USERNAME --password PASSWORD --record RECORD
