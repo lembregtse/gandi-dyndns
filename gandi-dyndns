@@ -38,6 +38,12 @@ def main():
         usage()
         sys.exit()
 
+    if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record) == False:
+        print ("Record " + record + " does not exist, please create")
+        usage()
+        sys.exit()
+
+    # check_if_record_exists(apikey, domain_info(apikey, domain)['zone_id'], record)
     #zone_id = domain_info(apikey, domain)['zone_id']
     #print(zone_test(apikey, zone_id))
 
@@ -50,11 +56,14 @@ def api_version(apikey):
 def zone_list(apikey):
     return api.domain.zone.list(apikey)
 
-def zone_test(apikey, zone_id):
+def zone_record_list(apikey, zone_id):
     return api.domain.zone.record.list(apikey, zone_id, 0)
 
 def domain_info(apikey, domain):
     return api.domain.info(apikey, domain)
+
+def get_zoneid_by_domain(apikey, domain):
+    return domain_info(apikey, domain)['zone_id']
 
 def check_if_domain_exists(apikey, domain):
     try:
@@ -69,6 +78,15 @@ def check_if_apikey_exists(apikey):
         return True
     except xmlrpclib.Fault as err:
         return False
+
+def check_if_record_exists(apikey, zone_id, record): 
+    recordListOptions = {"name": record}
+
+    records = api.domain.zone.record.list(apikey, zone_id, 0, recordListOptions)
+    if len(records) > 0:
+        return True
+
+    return False
 
 if __name__ == "__main__":
     main()
