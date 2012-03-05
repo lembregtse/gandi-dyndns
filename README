@@ -1,7 +1,17 @@
-Requirements:
+--- Requirements ---
 
 - Python (>= 2.7)
+- Python xmlrpclib 
 
-Usage:
+--- Gandi details ---
 
-gandi-dyndns --username USERNAME --password PASSWORD --record RECORD
+API Key (Apply here: https://www.gandi.net/admin/api_key)
+
+--- Usage ---
+
+gandi-dyndns --apikey APIKEY --record RECORD
+
+--- Readme ---
+
+All communication is done over https.
+
