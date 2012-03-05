@@ -39,7 +39,7 @@ def main():
         sys.exit()
 
     if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record) == False:
-        print ("Record " + record + " does not exist, please create")
+        print ("A Record " + record + " does not exist, please create")
         usage()
         sys.exit()
 
@@ -80,7 +80,7 @@ def check_if_apikey_exists(apikey):
         return False
 
 def check_if_record_exists(apikey, zone_id, record): 
-    recordListOptions = {"name": record}
+    recordListOptions = {"name": record, "type": "A"}
 
     records = api.domain.zone.record.list(apikey, zone_id, 0, recordListOptions)
     if len(records) > 0:
