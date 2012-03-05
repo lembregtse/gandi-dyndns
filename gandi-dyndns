@@ -25,11 +25,16 @@ def main():
         elif opt in ("-r", "--record"):
             record = arg
 
+    print(zone_list(apikey))
+
 def usage():
     print("Usage: gandi-dyndns --api=APIKEY --record=RECORD")
 
 def api_version(apikey):
     return api.version.info(apikey)
+
+def zone_list(apikey):
+    return api.domain.zone.list(apikey)
 
 if __name__ == "__main__":
     main()
