@@ -9,7 +9,7 @@ API Key (Apply here: https://www.gandi.net/admin/api_key)
 
 --- Usage ---
 
-gandi-dyndns --apikey=APIKEY --record=RECORD
+gandi-dyndns --apikey=APIKEY --domain=DOMAIN --record=RECORD
 
 --- Readme ---
 

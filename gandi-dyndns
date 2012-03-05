@@ -32,7 +32,7 @@ def main():
     print(zone_test(apikey, zone_id))
 
 def usage():
-    print("Usage: gandi-dyndns --api=APIKEY --record=RECORD")
+    print("Usage: gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD")
 
 def api_version(apikey):
     return api.version.info(apikey)
