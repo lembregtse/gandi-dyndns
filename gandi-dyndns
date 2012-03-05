@@ -8,10 +8,11 @@ api = xmlrpclib.ServerProxy('https://rpc.gandi.net/xmlrpc/')
 
 def main():
     apikey = ''
+    domain = ''
     record = ''
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "ahr", ["api=", "record=", "help"])
+        opts, args = getopt.getopt(sys.argv[1:], "ahrd", ["api=", "record=", "help", "domain="])
     except getopt.GetoptError as err:
         print(err)
         usage()
@@ -19,13 +20,16 @@ def main():
     for opt, arg in opts:
         if opt in ("-a", "--api"):
             apikey = arg
+        elif opt in ("-d", "--domain"):
+            domain = arg
         elif opt in ("-h", "--help"):
             usage()
             sys.exit()
         elif opt in ("-r", "--record"):
             record = arg
 
-    print(zone_list(apikey))
+    zone_id = domain_info(apikey, domain)['zone_id']
+    print(zone_test(apikey, zone_id))
 
 def usage():
     print("Usage: gandi-dyndns --api=APIKEY --record=RECORD")
@@ -35,6 +39,12 @@ def api_version(apikey):
 
 def zone_list(apikey):
     return api.domain.zone.list(apikey)
+
+def zone_test(apikey, zone_id):
+    return api.domain.zone.record.list(apikey, zone_id, 0)
+
+def domain_info(apikey, domain):
+    return api.domain.info(apikey, domain)
 
 if __name__ == "__main__":
     main()
