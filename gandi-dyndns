@@ -28,8 +28,14 @@ def main():
         elif opt in ("-r", "--record"):
             record = arg
 
+    if check_if_apikey_exists(apikey) == False:
+        print ("Apikey " + apikey + " does not exist or is malformed")
+        usage()
+        sys.exit()
+
     if check_if_domain_exists(apikey, domain) == False:
         print ("Domain " + domain + " does not exist")
+        usage()
         sys.exit()
 
     #zone_id = domain_info(apikey, domain)['zone_id']
@@ -53,6 +59,13 @@ def domain_info(apikey, domain):
 def check_if_domain_exists(apikey, domain):
     try:
         api.domain.info(apikey, domain)
+        return True
+    except xmlrpclib.Fault as err:
+        return False
+
+def check_if_apikey_exists(apikey):
+    try:
+        api_version(apikey)
         return True
     except xmlrpclib.Fault as err:
         return False
