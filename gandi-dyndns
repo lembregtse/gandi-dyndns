@@ -1,8 +1,37 @@
 #!/usr/bin/python
 
 import xmlrpclib
-api = xmlrcplib.ServerProxy('https://rpc.gandi.net/xmlrpc/')
+import getopt
+import sys
 
-apikey = ''
+api = xmlrpclib.ServerProxy('https://rpc.gandi.net/xmlrpc/')
 
-version = api.version.info(apikey)
+def main():
+    apikey = ''
+    record = ''
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "ahr", ["api=", "record=", "help"])
+    except getopt.GetoptError as err:
+        print(err)
+        usage()
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("-a", "--api"):
+            apikey = arg
+        elif opt in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif opt in ("-r", "--record"):
+            record = arg
+
+    print(apikey)
+    print(record)
+
+    #version = api.version.info(apikey)
+
+def usage():
+    print("Usage: gandi-dyndns --api=APIKEY --record=RECORD")
+
+if __name__ == "__main__":
+    main()
