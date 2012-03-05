@@ -25,13 +25,11 @@ def main():
         elif opt in ("-r", "--record"):
             record = arg
 
-    print(apikey)
-    print(record)
-
-    #version = api.version.info(apikey)
-
 def usage():
     print("Usage: gandi-dyndns --api=APIKEY --record=RECORD")
+
+def api_version(apikey):
+    return api.version.info(apikey)
 
 if __name__ == "__main__":
     main()
