@@ -1,0 +1,8 @@
+#!/usr/bin/python
+
+import xmlrpclib
+api = xmlrcplib.ServerProxy('https://rpc.gandi.net/xmlrpc/')
+
+apikey = ''
+
+version = api.version.info(apikey)
