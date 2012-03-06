@@ -11,6 +11,7 @@ def main():
     apikey = ''
     domain = ''
     record = ''
+    zoneversion = ''
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "ahrd", ["api=", "record=", "help", "domain="])
@@ -44,7 +45,14 @@ def main():
         usage()
         sys.exit()
 
-    update_record(apikey, get_zoneid_by_domain(apikey, domain), record, get_public_ip())
+    #api.domain.zone.record.delete(apikey, 
+    #    get_zoneid_by_domain(apikey, domain),
+    #    0,
+    #    {"name": "test"})
+
+    zone_version = api.domain.zone.version.new(apikey, get_zoneid_by_domain(apikey, domain))
+    
+    update_record(apikey, get_zoneid_by_domain(apikey, domain), zone_version, record, get_public_ip())
 
     # check_if_record_exists(apikey, domain_info(apikey, domain)['zone_id'], record)
     #zone_id = domain_info(apikey, domain)['zone_id']
@@ -71,13 +79,23 @@ def get_zoneid_by_domain(apikey, domain):
 def get_public_ip():
     return urllib2.urlopen("http://automation.whatismyip.com/n09230945.asp").read()
 
-def update_record(apikey, zone_id, record, public_ip):
-    zoneRecord = [{"name": record, 
-                   "ttl": 300, 
-                   "type": "A", 
-                   "value": public_ip}]
+def update_record(apikey, zone_id, zone_version, record, public_ip):
+    delete_record(apikey, zone_id, zone_version, record)
+    insert_record(apikey, zone_id, zone_version, record, public_ip)    
 
-    api.domain.zone.record.set(apikey, zone_id, 0, zoneRecord)
+def delete_record(apikey, zone_id, zone_version, record):
+    recordListOptions = {"name": record,
+                         "type": "A"}
+
+    records = api.domain.zone.record.delete(apikey, zone_id, zone_version, recordListOptions)
+
+def insert_record(apikey, zone_id, zone_version, record, public_ip):
+    zoneRecord = {"name": record, 
+                  "ttl": 300, 
+                  "type": "A", 
+                  "value": public_ip}
+
+    api.domain.zone.record.add(apikey, zone_id, zone_version, zoneRecord)
 
 def check_if_domain_exists(apikey, domain):
     try:
