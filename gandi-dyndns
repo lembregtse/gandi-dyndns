@@ -55,7 +55,7 @@ def main():
 
     # Activate the new zone
     api.domain.zone.version.set(apikey, zone_id, version_id)
-    print(api.domain.zone.info(apikey, zone_id))
+
 def usage():
     print("Usage: gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD")
 
