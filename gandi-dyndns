@@ -72,7 +72,10 @@ def get_public_ip():
     return urllib2.urlopen("http://automation.whatismyip.com/n09230945.asp").read()
 
 def update_record(apikey, zone_id, record, public_ip):
-    zoneRecord = {"name": record, "ttl": 300, "type": "A", "value": public_ip}
+    zoneRecord = [{"name": record, 
+                   "ttl": 300, 
+                   "type": "A", 
+                   "value": public_ip}]
 
     api.domain.zone.record.set(apikey, zone_id, 0, zoneRecord)
 
@@ -91,7 +94,8 @@ def check_if_apikey_exists(apikey):
         return False
 
 def check_if_record_exists(apikey, zone_id, record): 
-    recordListOptions = {"name": record, "type": "A"}
+    recordListOptions = {"name": record, 
+                         "type": "A"}
 
     records = api.domain.zone.record.list(apikey, zone_id, 0, recordListOptions)
     if len(records) > 0:
