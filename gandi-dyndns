@@ -11,7 +11,6 @@ def main():
     apikey = ''
     domain = ''
     record = ''
-    zoneversion = ''
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "ahrd", ["api=", "record=", "help", "domain="])
@@ -45,19 +44,18 @@ def main():
         usage()
         sys.exit()
 
-    #api.domain.zone.record.delete(apikey, 
-    #    get_zoneid_by_domain(apikey, domain),
-    #    0,
-    #    {"name": "test"})
-
-    zone_version = api.domain.zone.version.new(apikey, get_zoneid_by_domain(apikey, domain))
+    # Fetch the active zone id
+    zone_id = get_zoneid_by_domain(apikey, domain)
     
-    update_record(apikey, get_zoneid_by_domain(apikey, domain), zone_version, record, get_public_ip())
+    # Create a new zone version for zone id
+    version_id = create_new_zone_version(apikey, zone_id)
+    
+    # Update the record for the zone id and zone version
+    update_record(apikey, zone_id, version_id, record, get_public_ip())
 
-    # check_if_record_exists(apikey, domain_info(apikey, domain)['zone_id'], record)
-    #zone_id = domain_info(apikey, domain)['zone_id']
-    #print(zone_test(apikey, zone_id))
-
+    # Activate the new zone
+    api.domain.zone.version.set(apikey, zone_id, version_id)
+    print(api.domain.zone.info(apikey, zone_id))
 def usage():
     print("Usage: gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD")
 
@@ -70,12 +68,14 @@ def zone_list(apikey):
 def zone_record_list(apikey, zone_id):
     return api.domain.zone.record.list(apikey, zone_id, 0)
 
+def create_new_zone_version(apikey, zone_id):
+    return api.domain.zone.version.new(apikey, zone_id)
+
 def domain_info(apikey, domain):
     return api.domain.info(apikey, domain)
 
 def get_zoneid_by_domain(apikey, domain):
     return domain_info(apikey, domain)['zone_id']
-
 def get_public_ip():
     return urllib2.urlopen("http://automation.whatismyip.com/n09230945.asp").read()
 
