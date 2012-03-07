@@ -2,3 +2,4 @@
 - cleanup the code
 - ask Gandi why version.set does not update the gui directly (takes 1 hour)
 - add local history for IP to check weither we need to use gandi rpc 
+- add checks and warnings / errors
