@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import re
 import xmlrpclib
 import getopt
 import sys
@@ -11,9 +12,10 @@ def main():
     apikey = ''
     domain = ''
     record = ''
+    rtypes = []
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "ahrd", ["api=", "record=", "help", "domain="])
+        opts, args = getopt.getopt(sys.argv[1:], "ahrd46", ["api=", "record=", "help", "domain=", "ipv4", "ipv6"])
     except getopt.GetoptError as err:
         print(err)
         usage()
@@ -23,11 +25,18 @@ def main():
             apikey = arg
         elif opt in ("-d", "--domain"):
             domain = arg
+        elif opt in ("-4", "--ipv4"):
+            rtypes.append('A')
+        elif opt in ("-6", "--ipv6"):
+            rtypes.append('AAAA')
         elif opt in ("-h", "--help"):
             usage()
             sys.exit()
         elif opt in ("-r", "--record"):
             record = arg
+
+    if not rtypes:
+        rtypes = ['A']
 
     if check_if_apikey_exists(apikey) == False:
         print ("Apikey " + apikey + " does not exist or is malformed")
@@ -39,10 +48,22 @@ def main():
         usage()
         sys.exit()
 
-    if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record) == False:
-        print ("A Record " + record + " does not exist, please create")
-        usage()
-        sys.exit()
+    addresses = {}
+
+    for rtype in rtypes:
+        if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record, rtype) == False:
+            print (rtype + " Record " + record + " does not exist, please create")
+            usage()
+            sys.exit()
+
+        if rtype == 'A':
+            address = get_public_ipv4()
+        elif rtype == 'AAAA':
+            address = get_public_ipv6()
+        if not address:
+            print ("Can't find address for record type '" + rtype + "'")
+            sys.exit()
+        addresses[rtype] = address
 
     # Fetch the active zone id
     zone_id = get_zoneid_by_domain(apikey, domain)
@@ -50,14 +71,16 @@ def main():
     # Create a new zone version for zone id
     version_id = create_new_zone_version(apikey, zone_id)
     
-    # Update the record for the zone id and zone version
-    update_record(apikey, zone_id, version_id, record, get_public_ip())
+    for rtype in rtypes:
+        # Update the record for the zone id and zone version
+        update_record(apikey, zone_id, version_id, record, rtype, addresses[rtype])
+        print record + " " + rtype + " " + addresses[rtype]
 
     # Activate the new zone
     api.domain.zone.version.set(apikey, zone_id, version_id)
 
 def usage():
-    print("Usage: gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD")
+    print("Usage: gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD [--ipv4] [--ipv6]")
 
 def api_version(apikey):
     return api.version.info(apikey)
@@ -76,24 +99,35 @@ def domain_info(apikey, domain):
 
 def get_zoneid_by_domain(apikey, domain):
     return domain_info(apikey, domain)['zone_id']
-def get_public_ip():
-    return urllib2.urlopen("http://automation.whatismyip.com/n09230945.asp").read()
 
-def update_record(apikey, zone_id, zone_version, record, public_ip):
-    delete_record(apikey, zone_id, zone_version, record)
-    insert_record(apikey, zone_id, zone_version, record, public_ip)    
+def get_public_ipv4():
+    try:
+        return urllib2.urlopen("http://automation.whatismyip.com/n09230945.asp").read()
+    except:
+        return None
 
-def delete_record(apikey, zone_id, zone_version, record):
+def get_public_ipv6():
+    data = urllib2.urlopen("http://icanhazipv6.com").read()
+    matches = re.search('<p class="my_address">(.*?)</p>', data)
+    if matches:
+        return matches.group(1)
+    return None
+
+def update_record(apikey, zone_id, zone_version, record, rtype, value):
+    delete_record(apikey, zone_id, zone_version, record, rtype)
+    insert_record(apikey, zone_id, zone_version, record, rtype, value)    
+
+def delete_record(apikey, zone_id, zone_version, record, rtype):
     recordListOptions = {"name": record,
-                         "type": "A"}
+                         "type": rtype}
 
     records = api.domain.zone.record.delete(apikey, zone_id, zone_version, recordListOptions)
 
-def insert_record(apikey, zone_id, zone_version, record, public_ip):
+def insert_record(apikey, zone_id, zone_version, record, rtype, value):
     zoneRecord = {"name": record, 
                   "ttl": 300, 
-                  "type": "A", 
-                  "value": public_ip}
+                  "type": rtype, 
+                  "value": value}
 
     api.domain.zone.record.add(apikey, zone_id, zone_version, zoneRecord)
 
@@ -111,9 +145,9 @@ def check_if_apikey_exists(apikey):
     except xmlrpclib.Fault as err:
         return False
 
-def check_if_record_exists(apikey, zone_id, record): 
+def check_if_record_exists(apikey, zone_id, record, rtype): 
     recordListOptions = {"name": record, 
-                         "type": "A"}
+                         "type": rtype}
 
     records = api.domain.zone.record.list(apikey, zone_id, 0, recordListOptions)
     if len(records) > 0:
