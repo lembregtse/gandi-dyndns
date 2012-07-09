@@ -14,27 +14,23 @@ def main():
     record = ''
     rtypes = []
 
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "ahrd46", ["api=", "record=", "help", "domain=", "ipv4", "ipv6"])
-    except getopt.GetoptError as err:
-        print(err)
-        usage()
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt in ("-a", "--api"):
-            apikey = arg
-        elif opt in ("-d", "--domain"):
-            domain = arg
-        elif opt in ("-4", "--ipv4"):
-            rtypes.append('A')
-        elif opt in ("-6", "--ipv6"):
-            rtypes.append('AAAA')
-        elif opt in ("-h", "--help"):
-            usage()
-            sys.exit()
-        elif opt in ("-r", "--record"):
-            record = arg
+    from optparse import OptionParser
+    optp = OptionParser()
+    optp.add_option('-a', '--api',    help='Specify API key')
+    optp.add_option('-d', '--domain', help='Specify domain')
+    optp.add_option('-4', '--ipv4',   help='Enable IPv4')
+    optp.add_option('-6', '--ipv6',   help='Enable IPv6')
+    optp.add_option('-r', '--record', help='Specify record data')
+    (opts, args) = optp.parse_args()
+   
+    # Process
+    if opts.ipv4: rtypes.append('A')
+    if opts.ipv6: rtypes.append('AAAA')
+    domain = opts.domain
+    apikey = opts.api
+    record = opts.record
 
+    # Default
     if not rtypes:
         rtypes = ['A']
 
@@ -102,7 +98,7 @@ def get_zoneid_by_domain(apikey, domain):
 
 def get_public_ipv4():
     try:
-        return urllib2.urlopen("http://automation.whatismyip.com/n09230945.asp").read()
+        return urllib2.urlopen('http://api.externalip.net/ip/').read()
     except:
         return None
 
