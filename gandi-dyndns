@@ -81,7 +81,7 @@ class GandiAPI:
   # Insert a new record
   def zone_record_insert ( self, zver, name, type, value, ttl ):
     opts = { 'name' : name, 'type' : type, 'value' : value, 'ttl' : ttl }
-    self._rpc.domain.zone.record.insert(self._key, self._zoneid, zver, opts)
+    self._rpc.domain.zone.record.add(self._key, self._zoneid, zver, opts)
     
   # Update a record
   def zone_record_update ( self, zver, name, type, value, ttl ):
@@ -123,8 +123,6 @@ if __name__ == '__main__':
   optp.add_option('-a', '--api',    help='Specify API key')
   optp.add_option('-d', '--domain', help='Specify domain')
   optp.add_option('-r', '--record', help='Specify record data')
-  optp.add_option('-u', '--update', help='Update existing zone file',
-                  action='store_true')
   optp.add_option('-t', '--ttl',    help='Specify record TTL [default=300s]',
                   type='int', default=300)
   optp.add_option('-4', '--ipv4',   help='Enable IPv4',
@@ -191,17 +189,11 @@ if __name__ == '__main__':
     sys.exit(0)
 
   # New zone
-  if not opts.update:
-    if opts.test:
-      zver = 12345
-    else:
-      zver = api.zone_version_new()
-    print 'INFO : created a new zone file version %d' % zver
-
-  # Existing
+  if opts.test:
+    zver = 12345
   else:
-    zver = 0
-    print 'INFO : updating the current zone file'
+    zver = api.zone_version_new()
+  print 'INFO : created a new zone file version %d' % zver
 
   # Update
   for rt in update:
