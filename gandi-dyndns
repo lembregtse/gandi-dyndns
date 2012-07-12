@@ -1,100 +1,101 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+#
+# gandi-dyndns - Dynamic DNS script for Gandi.net users
+#
+# Copyright (C) 2012 Adam Sutton <dev@adamsutton.me.uk>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
-import re
-import xmlrpclib
-import getopt
-import sys
-import urllib2
+#
+# Imports
+#
 
-api = xmlrpclib.ServerProxy('https://rpc.gandi.net/xmlrpc/')
+import os, sys, re
+import xmlrpclib, urllib2
+from optparse import OptionParser
 
-def main():
-    apikey = ''
-    domain = ''
-    record = ''
-    rtypes = []
+#
+# Api wrapper
+#
+class GandiAPI:
 
-    from optparse import OptionParser
-    optp = OptionParser()
-    optp.add_option('-a', '--api',    help='Specify API key')
-    optp.add_option('-d', '--domain', help='Specify domain')
-    optp.add_option('-4', '--ipv4',   help='Enable IPv4')
-    optp.add_option('-6', '--ipv6',   help='Enable IPv6')
-    optp.add_option('-r', '--record', help='Specify record data')
-    (opts, args) = optp.parse_args()
-   
-    # Process
-    if opts.ipv4: rtypes.append('A')
-    if opts.ipv6: rtypes.append('AAAA')
-    domain = opts.domain
-    apikey = opts.api
-    record = opts.record
+  # Setup
+  def __init__ ( self, key, domain ):
+    self._rpc     = xmlrpclib.ServerProxy('https://rpc.gandi.net/xmlrpc/')
+    self._key     = key
+    self._domain  = domain
+    self._zoneid  = None
+    self._zonever = None
 
-    # Default
-    if not rtypes:
-        rtypes = ['A']
+    # Check key/domain
+    vok = False
+    try:
+      self.version()
+      vok = True
+      di  = self.domain_info()
+      if 'zone_id' in di:
+        self._zoneid = di['zone_id']
+      else:
+        print 'ERROR: zone id for domain [%s] could not be found' % domain
+    except Exception, e:
+      if vok:
+        print 'ERROR: domain specified [%s] was invalid' % domain
+      else:
+        print 'ERROR: apikey specified [%s] was invalid' % key
 
-    if check_if_apikey_exists(apikey) == False:
-        print ("Apikey " + apikey + " does not exist or is malformed")
-        usage()
-        sys.exit()
+  # API version
+  def version ( self ):
+    return self._rpc.version.info(self._key)
 
-    if check_if_domain_exists(apikey, domain) == False:
-        print ("Domain " + domain + " does not exist")
-        usage()
-        sys.exit()
+  # Domain info
+  def domain_info ( self ):
+    return self._rpc.domain.info(self._key, self._domain)
 
-    addresses = {}
+  # Get zone record
+  def zone_record_list ( self, name = None, type = None ):
+    opts = {}
+    if name: opts['name'] = name
+    if type: opts['type'] = type
+    return self._rpc.domain.zone.record.list(self._key, self._zoneid, 0, opts)
 
-    for rtype in rtypes:
-        if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record, rtype) == False:
-            print (rtype + " Record " + record + " does not exist, please create")
-            usage()
-            sys.exit()
+  # Get new zone version
+  def zone_version_new ( self ):
+    return self._rpc.domain.zone.version.new(self._key, self._zoneid)
 
-        if rtype == 'A':
-            address = get_public_ipv4()
-        elif rtype == 'AAAA':
-            address = get_public_ipv6()
-        if not address:
-            print ("Can't find address for record type '" + rtype + "'")
-            sys.exit()
-        addresses[rtype] = address
+  # Delete a zone record
+  def zone_record_delete ( self, zver, name, type ):
+    opts = { 'name' : name, 'type' : type }
+    self._rpc.domain.zone.record.delete(self._key, self._zoneid, zver, opts)
 
-    # Fetch the active zone id
-    zone_id = get_zoneid_by_domain(apikey, domain)
+  # Insert a new record
+  def zone_record_insert ( self, zver, name, type, value, ttl ):
+    opts = { 'name' : name, 'type' : type, 'value' : value, 'ttl' : ttl }
+    self._rpc.domain.zone.record.insert(self._key, self._zoneid, zver, opts)
     
-    # Create a new zone version for zone id
-    version_id = create_new_zone_version(apikey, zone_id)
-    
-    for rtype in rtypes:
-        # Update the record for the zone id and zone version
-        update_record(apikey, zone_id, version_id, record, rtype, addresses[rtype])
-        print record + " " + rtype + " " + addresses[rtype]
+  # Update a record
+  def zone_record_update ( self, zver, name, type, value, ttl ):
+    self.zone_record_delete(zver, name, type)
+    self.zone_record_insert(zver, name, type, value, ttl)
 
-    # Activate the new zone
-    api.domain.zone.version.set(apikey, zone_id, version_id)
+  # Set active version
+  def zone_version_set ( self, zver ):
+    if zver:
+      self._rpc.domain.zone.version.set(self._key, self._zoneid, zver)
 
-def usage():
-    print("Usage: gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD [--ipv4] [--ipv6]")
-
-def api_version(apikey):
-    return api.version.info(apikey)
-
-def zone_list(apikey):
-    return api.domain.zone.list(apikey)
-
-def zone_record_list(apikey, zone_id):
-    return api.domain.zone.record.list(apikey, zone_id, 0)
-
-def create_new_zone_version(apikey, zone_id):
-    return api.domain.zone.version.new(apikey, zone_id)
-
-def domain_info(apikey, domain):
-    return api.domain.info(apikey, domain)
-
-def get_zoneid_by_domain(apikey, domain):
-    return domain_info(apikey, domain)['zone_id']
+#
+# Get public IP address
+#
 
 def get_public_ipv4():
     try:
@@ -103,53 +104,121 @@ def get_public_ipv4():
         return None
 
 def get_public_ipv6():
-    data = urllib2.urlopen("http://icanhazipv6.com").read()
-    matches = re.search('<p class="my_address">(.*?)</p>', data)
-    if matches:
-        return matches.group(1)
+    try:
+      data = urllib2.urlopen("http://icanhazipv6.com").read()
+      matches = re.search('<p class="my_address">(.*?)</p>', data)
+      if matches:
+          return matches.group(1)
+    except: pass
     return None
 
-def update_record(apikey, zone_id, zone_version, record, rtype, value):
-    delete_record(apikey, zone_id, zone_version, record, rtype)
-    insert_record(apikey, zone_id, zone_version, record, rtype, value)    
+#
+# Main
+#
 
-def delete_record(apikey, zone_id, zone_version, record, rtype):
-    recordListOptions = {"name": record,
-                         "type": rtype}
+if __name__ == '__main__':
 
-    records = api.domain.zone.record.delete(apikey, zone_id, zone_version, recordListOptions)
+  # Process command line
+  optp = OptionParser()
+  optp.add_option('-a', '--api',    help='Specify API key')
+  optp.add_option('-d', '--domain', help='Specify domain')
+  optp.add_option('-r', '--record', help='Specify record data')
+  optp.add_option('-u', '--update', help='Update existing zone file',
+                  action='store_true')
+  optp.add_option('-t', '--ttl',    help='Specify record TTL [default=300s]',
+                  type='int', default=300)
+  optp.add_option('-4', '--ipv4',   help='Enable IPv4',
+                  action='store_true')
+  optp.add_option('-6', '--ipv6',   help='Enable IPv6',
+                  action='store_true')
+  optp.add_option('--test', help='Run test, do not update anything',
+                  action='store_true')
+  (opts, args) = optp.parse_args()
 
-def insert_record(apikey, zone_id, zone_version, record, rtype, value):
-    zoneRecord = {"name": record, 
-                  "ttl": 300, 
-                  "type": rtype, 
-                  "value": value}
+  # Validate Options
+  if not opts.api or not opts.domain or not opts.record:
+    print 'ERROR: you must specify -a -d and -r'
+    sys.exit(1)
 
-    api.domain.zone.record.add(apikey, zone_id, zone_version, zoneRecord)
+  # Setup api
+  api = GandiAPI(opts.api, opts.domain)
 
-def check_if_domain_exists(apikey, domain):
-    try:
-        api.domain.info(apikey, domain)
-        return True
-    except xmlrpclib.Fault as err:
-        return False
+  # Record types
+  rtypes = {}
+  if opts.ipv4: rtypes['A']    = None
+  if opts.ipv6: rtypes['AAAA'] = None
+  if not rtypes:
+    print 'WARN : no record type specified, will default to ipv4'
+    rtypes = { 'A' : None }
 
-def check_if_apikey_exists(apikey):
-    try:
-        api_version(apikey)
-        return True
-    except xmlrpclib.Fault as err:
-        return False
+  # Test mode
+  if opts.test:
+    print 'INFO : running in test mode, will not update records'
 
-def check_if_record_exists(apikey, zone_id, record, rtype): 
-    recordListOptions = {"name": record, 
-                         "type": rtype}
+  # Process records
+  update = {}
+  for rt in rtypes:
+    rs = api.zone_record_list(name=opts.record, type=rt)
 
-    records = api.domain.zone.record.list(apikey, zone_id, 0, recordListOptions)
-    if len(records) > 0:
-        return True
+    # Invalid
+    if not rs:
+      print 'WARN : %s record %s does not exist, will skip' % (rt, opts.record)
+      continue
 
-    return False
+    # Check address
+    addr = None
+    if rt == 'A':
+      addr = get_public_ipv4()
+    else:
+      addr = get_public_ipv6()
+    if not addr:
+      print 'WARN : %s could not find public IP address, will skip' % rt
+      continue
 
-if __name__ == "__main__":
-    main()
+    # Check against record
+    if rs[0]['value'] == addr:
+      print 'INFO : %s record already correct, will skip' % rt
+      continue
+
+    # Update
+    print 'INFO : %s record will be updated from %s to %s' %\
+          (rt, rs[0]['value'], addr)
+    update[rt] = addr
+
+  # Done
+  if not update:
+    print 'INFO : nothing to update'
+    sys.exit(0)
+
+  # New zone
+  if not opts.update:
+    if opts.test:
+      zver = 12345
+    else:
+      zver = api.zone_version_new()
+    print 'INFO : created a new zone file version %d' % zver
+
+  # Existing
+  else:
+    zver = 0
+    print 'INFO : updating the current zone file'
+
+  # Update
+  for rt in update:
+    addr = update[rt]
+    print 'INFO : updating zone %s record %s to %s' % (rt, opts.record, addr)
+    if not opts.test:
+      api.zone_record_update(zver, opts.record, rt, addr, opts.ttl)
+
+  # Active new zone file
+  if not opts.test and zver:
+    api.zone_version_set(zver)
+
+  # Done
+  print 'INFO : records updated'
+
+# ###########################################################################
+# Editor
+#
+# vim:sts=2:ts=2:sw=2:et
+# ###########################################################################
