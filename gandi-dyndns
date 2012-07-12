@@ -18,8 +18,8 @@ def main():
     optp = OptionParser()
     optp.add_option('-a', '--api',    help='Specify API key')
     optp.add_option('-d', '--domain', help='Specify domain')
-    optp.add_option('-4', '--ipv4',   help='Enable IPv4')
-    optp.add_option('-6', '--ipv6',   help='Enable IPv6')
+    optp.add_option('-4', '--ipv4',   help='Enable IPv4', action='store_true')
+    optp.add_option('-6', '--ipv6',   help='Enable IPv6', action='store_true')
     optp.add_option('-r', '--record', help='Specify record data')
     (opts, args) = optp.parse_args()
    
