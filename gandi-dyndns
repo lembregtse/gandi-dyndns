@@ -28,16 +28,28 @@ def main():
     if opts.ipv6: rtypes.append('AAAA')
     domain = opts.domain
     apikey = opts.api
-    record = opts.record
-
-    # Default
-    if not rtypes:
-        rtypes = ['A']
-
+    record = opts.record    
+    
+    if apikey == None:
+        print ("No Apikey specified")
+        usage()
+        sys.exit()
+        
     if check_if_apikey_exists(apikey) == False:
         print ("Apikey " + apikey + " does not exist or is malformed")
         usage()
         sys.exit()
+        
+    if domain == None:
+        print ("No Domain specified")
+        usage()
+        sys.exit()
+    
+    # Default
+    if not rtypes:
+        rtypes = ['A']
+
+   
 
     if check_if_domain_exists(apikey, domain) == False:
         print ("Domain " + domain + " does not exist")
