@@ -21,6 +21,8 @@ def main():
     optp.add_option('-4', '--ipv4',   help='Enable IPv4', action='store_true')
     optp.add_option('-6', '--ipv6',   help='Enable IPv6', action='store_true')
     optp.add_option('-r', '--record', help='Specify record data')
+    optp.add_option('--extip4', help='Force external IPv4. This can be used to update a record with an IP different than the IP of the server/workstation from which the script is executed')
+    optp.add_option('--extip6', help='Force external IPv6. This can be used to update a record with an IP different than the IP of the server/workstation from which the script is executed')
     (opts, args) = optp.parse_args()
    
     # Process
@@ -29,12 +31,15 @@ def main():
     domain = opts.domain
     apikey = opts.api
     record = opts.record    
+    extip4 = opts.extip4
+    extip6 = opts.extip6
     
-    if apikey == None:
+    if apikey == None or apikey == '':
         print ("No Apikey specified")
         usage()
         sys.exit()
         
+    #This call will always return true. cf comment regarding check_if_apikey_exists    
     if check_if_apikey_exists(apikey) == False:
         print ("Apikey " + apikey + " does not exist or is malformed")
         usage()
@@ -44,17 +49,15 @@ def main():
         print ("No Domain specified")
         usage()
         sys.exit()
-    
-    # Default
-    if not rtypes:
-        rtypes = ['A']
-
-   
-
+        
     if check_if_domain_exists(apikey, domain) == False:
         print ("Domain " + domain + " does not exist")
         usage()
         sys.exit()
+    
+    # Default
+    if not rtypes:
+        rtypes = ['A']
 
     addresses = {}
 
@@ -65,16 +68,29 @@ def main():
             sys.exit()
 
         if rtype == 'A':
-            address = get_public_ipv4()
+            if extip4 != "" and not extip4 == None:
+                address = extip4
+            else :
+                address = get_public_ipv4()
         elif rtype == 'AAAA':
-            address = get_public_ipv6()
+            if extip6 != "" and not extip6 == None:
+                address = extip6
+            else :
+                address = get_public_ipv6()
         if not address:
             print ("Can't find address for record type '" + rtype + "'")
             sys.exit()
         addresses[rtype] = address
-
+        
     # Fetch the active zone id
     zone_id = get_zoneid_by_domain(apikey, domain)
+    
+    # Check if the current IPv4 address changed
+    for rtype in rtypes:
+        ip_changed = check_if_ip_changed(apikey, zone_id, record, rtype, addresses[rtype])
+        if not ip_changed:
+            print ("The IP for '" + record + "' did not change")
+            sys.exit() 
     
     # Create a new zone version for zone id
     version_id = create_new_zone_version(apikey, zone_id)
@@ -133,7 +149,7 @@ def delete_record(apikey, zone_id, zone_version, record, rtype):
 
 def insert_record(apikey, zone_id, zone_version, record, rtype, value):
     zoneRecord = {"name": record, 
-                  "ttl": 300, 
+                  "ttl": 10800, 
                   "type": rtype, 
                   "value": value}
 
@@ -146,6 +162,9 @@ def check_if_domain_exists(apikey, domain):
     except xmlrpclib.Fault as err:
         return False
 
+#will always return true, even with malformed or empty apikey.
+#api.version.info(apikey) in api_version returns a valid API version
+#even if apikey is empty string or None.
 def check_if_apikey_exists(apikey):
     try:
         api_version(apikey)
@@ -161,6 +180,20 @@ def check_if_record_exists(apikey, zone_id, record, rtype):
     if len(records) > 0:
         return True
 
+    return False
+
+def check_if_ip_changed(apikey, zone_id, record, rtype, external_ip):
+    recordListOptions = {"name": record,
+                         "type": rtype}
+    
+    records = api.domain.zone.record.list(apikey, zone_id, 0, recordListOptions)
+    if len(records) > 0:
+        for record in records:
+            if record['value'] == external_ip:
+                return False
+            
+        return True
+        
     return False
 
 if __name__ == "__main__":
