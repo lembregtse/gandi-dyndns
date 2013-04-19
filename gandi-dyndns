@@ -35,25 +35,25 @@ def main():
     extip6 = opts.extip6
     
     if apikey == None or apikey == '':
-        print ("No Apikey specified")
+        print >> sys.stderr, ("No Apikey specified")
         usage()
-        sys.exit()
+        sys.exit(79)
         
     #This call will always return true. cf comment regarding check_if_apikey_exists    
     if check_if_apikey_exists(apikey) == False:
-        print ("Apikey " + apikey + " does not exist or is malformed")
+        print >> sys.stderr, ("Apikey " + apikey + " does not exist or is malformed")
         usage()
-        sys.exit()
+        sys.exit(80)
         
     if domain == None:
-        print ("No Domain specified")
+        print >> sys.stderr, ("No Domain specified")
         usage()
-        sys.exit()
+        sys.exit(81)
         
     if check_if_domain_exists(apikey, domain) == False:
-        print ("Domain " + domain + " does not exist")
+        print >> sys.stderr, ("Domain " + domain + " does not exist")
         usage()
-        sys.exit()
+        sys.exit(82)
     
     # Default
     if not rtypes:
@@ -63,9 +63,9 @@ def main():
 
     for rtype in rtypes:
         if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record, rtype) == False:
-            print (rtype + " Record " + record + " does not exist, please create")
+            print >> sys.stderr, (rtype + " Record " + record + " does not exist, please create")
             usage()
-            sys.exit()
+            sys.exit(83)
 
         if rtype == 'A':
             if extip4 != "" and not extip4 == None:
@@ -78,8 +78,8 @@ def main():
             else :
                 address = get_public_ipv6()
         if not address:
-            print ("Can't find address for record type '" + rtype + "'")
-            sys.exit()
+            print >> sys.stderr,  ("Can't find address for record type '" + rtype + "'")
+            sys.exit(84)
         addresses[rtype] = address
         
     # Fetch the active zone id
@@ -90,7 +90,7 @@ def main():
         ip_changed = check_if_ip_changed(apikey, zone_id, record, rtype, addresses[rtype])
         if not ip_changed:
             print ("The IP for '" + record + "' did not change")
-            sys.exit() 
+            sys.exit(0) 
     
     # Create a new zone version for zone id
     version_id = create_new_zone_version(apikey, zone_id)
