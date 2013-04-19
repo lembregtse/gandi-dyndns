@@ -13,6 +13,7 @@ def main():
     domain = ''
     record = ''
     rtypes = []
+    quiet=False
 
     from optparse import OptionParser
     optp = OptionParser()
@@ -23,6 +24,7 @@ def main():
     optp.add_option('-r', '--record', help='Specify record data')
     optp.add_option('--extip4', help='Force external IPv4. This can be used to update a record with an IP different than the IP of the server/workstation from which the script is executed')
     optp.add_option('--extip6', help='Force external IPv6. This can be used to update a record with an IP different than the IP of the server/workstation from which the script is executed')
+    optp.add_option('-q', '--quiet',    help='No output except to stderr on error', action='store_true')
     (opts, args) = optp.parse_args()
    
     # Process
@@ -33,6 +35,7 @@ def main():
     record = opts.record    
     extip4 = opts.extip4
     extip6 = opts.extip6
+    if opts.quiet: quiet=True
     
     if apikey == None or apikey == '':
         print >> sys.stderr, ("No Apikey specified")
@@ -89,7 +92,8 @@ def main():
     for rtype in rtypes:
         ip_changed = check_if_ip_changed(apikey, zone_id, record, rtype, addresses[rtype])
         if not ip_changed:
-            print ("The IP for '" + record + "' did not change")
+            if not quiet:
+				print ("The IP for '" + record + "' did not change")
             sys.exit(0) 
     
     # Create a new zone version for zone id
@@ -98,13 +102,15 @@ def main():
     for rtype in rtypes:
         # Update the record for the zone id and zone version
         update_record(apikey, zone_id, version_id, record, rtype, addresses[rtype])
-        print record + " " + rtype + " " + addresses[rtype]
+        if not quiet:
+			print record + " " + rtype + " " + addresses[rtype]
 
     # Activate the new zone
     api.domain.zone.version.set(apikey, zone_id, version_id)
 
 def usage():
-    print("Usage: gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD [--ipv4] [--ipv6]")
+    print("Usage: gandi-dyndns --api=<APIKEY> --domain=<DOMAIN> --record=<RECORD> [--ipv4] [--ipv6] [--quiet]")
+    print("Example: gandi-dyndns --api=123ApIkEyFrOmGanDi --domain=example.com --record=www --ipv4")
 
 def api_version(apikey):
     return api.version.info(apikey)
