@@ -99,9 +99,12 @@ class GandiAPI:
 
 def get_public_ipv4():
     try:
+        return urllib2.urlopen('http://ipinfo.io/ip').read()
+    except: pass
+    try:
         return urllib2.urlopen('http://api.externalip.net/ip/').read()
-    except:
-        return None
+    except: pass
+    return None
 
 def get_public_ipv6():
     try:
@@ -131,6 +134,7 @@ if __name__ == '__main__':
                   action='store_true')
   optp.add_option('--test', help='Run test, do not update anything',
                   action='store_true')
+  optp.add_option('--addrv4', default=None)
   (opts, args) = optp.parse_args()
 
   # Validate Options
@@ -166,7 +170,10 @@ if __name__ == '__main__':
     # Check address
     addr = None
     if rt == 'A':
-      addr = get_public_ipv4()
+      if opts.addrv4:
+        addr = opts.addrv4
+      else:
+        addr = get_public_ipv4()
     else:
       addr = get_public_ipv6()
     if not addr:
