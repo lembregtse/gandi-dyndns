@@ -17,11 +17,11 @@ def main():
 
     from optparse import OptionParser
     optp = OptionParser()
-    optp.add_option('-a', '--api',    help='Specify API key')
-    optp.add_option('-d', '--domain', help='Specify domain')
-    optp.add_option('-4', '--ipv4',   help='Enable IPv4', action='store_true')
-    optp.add_option('-6', '--ipv6',   help='Enable IPv6', action='store_true')
-    optp.add_option('-r', '--record', help='Specify record data')
+    optp.add_option('-a', '--api',     help='Specify API key')
+    optp.add_option('-d', '--domain',  help='Specify domain')
+    optp.add_option('-4', '--ipv4',    help='Enable IPv4', action='store_true')
+    optp.add_option('-6', '--ipv6',    help='Enable IPv6', action='store_true')
+    optp.add_option('-r', '--records', help='Specify record data', action='append')
     optp.add_option('--extip4', help='Force external IPv4. This can be used to update a record with an IP different than the IP of the server/workstation from which the script is executed')
     optp.add_option('--extip6', help='Force external IPv6. This can be used to update a record with an IP different than the IP of the server/workstation from which the script is executed')
     optp.add_option('-q', '--quiet',    help='No output except to stderr on error', action='store_true')
@@ -32,7 +32,7 @@ def main():
     if opts.ipv6: rtypes.append('AAAA')
     domain = opts.domain
     apikey = opts.api
-    record = opts.record    
+    records = opts.records
     extip4 = opts.extip4
     extip6 = opts.extip6
     if opts.quiet: quiet=True
@@ -41,18 +41,18 @@ def main():
         print >> sys.stderr, ("No Apikey specified")
         usage()
         sys.exit(79)
-        
+    
     #This call will always return true. cf comment regarding check_if_apikey_exists    
     if check_if_apikey_exists(apikey) == False:
         print >> sys.stderr, ("Apikey " + apikey + " does not exist or is malformed")
         usage()
         sys.exit(80)
-        
+    
     if domain == None:
         print >> sys.stderr, ("No Domain specified")
         usage()
         sys.exit(81)
-        
+    
     if check_if_domain_exists(apikey, domain) == False:
         print >> sys.stderr, ("Domain " + domain + " does not exist")
         usage()
@@ -61,50 +61,68 @@ def main():
     # Default
     if not rtypes:
         rtypes = ['A']
-
-    addresses = {}
-
+    
+    public_addresses = {}
     for rtype in rtypes:
-        if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record, rtype) == False:
-            print >> sys.stderr, (rtype + " Record " + record + " does not exist, please create")
-            usage()
-            sys.exit(83)
-
         if rtype == 'A':
             if extip4 != "" and not extip4 == None:
-                address = extip4
+                public_addresses[rtype] = extip4
             else :
-                address = get_public_ipv4()
+                public_addresses[rtype] = get_public_ipv4()
         elif rtype == 'AAAA':
             if extip6 != "" and not extip6 == None:
-                address = extip6
+                public_addresses[rtype] = extip6
             else :
-                address = get_public_ipv6()
-        if not address:
+                public_addresses[rtype] = get_public_ipv6()
+        
+        if not public_addresses[rtype]:
             print >> sys.stderr,  ("Can't find address for record type '" + rtype + "'")
             sys.exit(84)
-        addresses[rtype] = address
-        
+    
     # Fetch the active zone id
     zone_id = get_zoneid_by_domain(apikey, domain)
     
-    # Check if the current IPv4 address changed
-    for rtype in rtypes:
-        ip_changed = check_if_ip_changed(apikey, zone_id, record, rtype, addresses[rtype])
-        if not ip_changed:
-            if not quiet:
-				print ("The IP for '" + record + "' did not change")
-            sys.exit(0) 
+    updates = []
+    gandi_records = {}
+    
+    for record in records:
+        gandi_records[record] = {}
+        for rtype in rtypes:
+            gandi_records[record][rtype] = get_record_informations(apikey, zone_id, record, rtype)
+            if gandi_records[record][rtype] == False:
+                print >> sys.stderr, (rtype + " Record " + record + " does not exist, please create it")
+                usage()
+                sys.exit(83)
+            
+            
+            if check_if_ip_changed(gandi_records[record][rtype], public_addresses[rtype]):
+                updates.append({
+                    'record': record,
+                    'rtype': rtype,
+                    'ttl': gandi_records[record][rtype][0]['ttl']
+                })
+    
+    if len(updates) == 0:
+        if not quiet:
+            print ("No IP changed")
+        sys.exit(0)
     
     # Create a new zone version for zone id
     version_id = create_new_zone_version(apikey, zone_id)
-    
-    for rtype in rtypes:
+    for update in updates:
         # Update the record for the zone id and zone version
-        update_record(apikey, zone_id, version_id, record, rtype, addresses[rtype])
+        update_record(
+            apikey,
+            zone_id,
+            version_id,
+            update['record'],
+            update['rtype'],
+            update['ttl'],
+            public_addresses[update['rtype']]
+        )
         if not quiet:
-			print record + " " + rtype + " " + addresses[rtype]
-
+            print update['record'] + " " + str(update['ttl']) + " " + update['rtype'] + " " + public_addresses[update['rtype']]
+    
     # Activate the new zone
     api.domain.zone.version.set(apikey, zone_id, version_id)
 
@@ -146,22 +164,23 @@ def get_public_ipv6():
         return matches.group(1)
     return None
 
-def update_record(apikey, zone_id, zone_version, record, rtype, value):
-    delete_record(apikey, zone_id, zone_version, record, rtype)
-    insert_record(apikey, zone_id, zone_version, record, rtype, value)    
+def update_record(apikey, zone_id, zone_version, record, rtype, ttl, value):
+    delete_record(apikey, zone_id, zone_version, record, rtype, ttl)
+    insert_record(apikey, zone_id, zone_version, record, rtype, ttl, value)    
 
-def delete_record(apikey, zone_id, zone_version, record, rtype):
+def delete_record(apikey, zone_id, zone_version, record, rtype, ttl):
     recordListOptions = {"name": record,
-                         "type": rtype}
-
+                         "type": rtype,
+                         "ttl": ttl}
+    
     records = api.domain.zone.record.delete(apikey, zone_id, zone_version, recordListOptions)
 
-def insert_record(apikey, zone_id, zone_version, record, rtype, value):
-    zoneRecord = {"name": record, 
-                  "ttl": 10800, 
-                  "type": rtype, 
+def insert_record(apikey, zone_id, zone_version, record, rtype, ttl, value):
+    zoneRecord = {"name": record,
+                  "ttl": ttl,
+                  "type": rtype,
                   "value": value}
-
+    
     api.domain.zone.record.add(apikey, zone_id, zone_version, zoneRecord)
 
 def check_if_domain_exists(apikey, domain):
@@ -191,18 +210,24 @@ def check_if_record_exists(apikey, zone_id, record, rtype):
 
     return False
 
-def check_if_ip_changed(apikey, zone_id, record, rtype, external_ip):
-    recordListOptions = {"name": record,
+def get_record_informations(apikey, zone_id, record, rtype): 
+    recordListOptions = {"name": record, 
                          "type": rtype}
-    
+
     records = api.domain.zone.record.list(apikey, zone_id, 0, recordListOptions)
+    if len(records) > 0:
+        return records
+        
+    return False
+
+def check_if_ip_changed(records, external_ip):
     if len(records) > 0:
         for record in records:
             if record['value'] == external_ip:
                 return False
             
         return True
-        
+    
     return False
 
 if __name__ == "__main__":
