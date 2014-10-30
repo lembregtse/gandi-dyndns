@@ -93,7 +93,7 @@ def main():
         ip_changed = check_if_ip_changed(apikey, zone_id, record, rtype, addresses[rtype])
         if not ip_changed:
             if not quiet:
-				print ("The IP for '" + record + "' did not change")
+                print ("The IP for '" + record + "' did not change")
             sys.exit(0) 
     
     # Create a new zone version for zone id
