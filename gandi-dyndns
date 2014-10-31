@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
 
 import re
 import xmlrpclib
@@ -103,7 +103,7 @@ def main():
         # Update the record for the zone id and zone version
         update_record(apikey, zone_id, version_id, record, rtype, addresses[rtype])
         if not quiet:
-			print record + " " + rtype + " " + addresses[rtype]
+            print (record + " " + rtype + " " + addresses[rtype])
 
     # Activate the new zone
     api.domain.zone.version.set(apikey, zone_id, version_id)
