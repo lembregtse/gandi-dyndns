@@ -99,10 +99,10 @@ class GandiAPI:
 
 def get_public_ipv4():
     try:
-        return urllib2.urlopen('http://ipinfo.io/ip').read()
+        return urllib2.urlopen('http://ipinfo.io/ip').read().strip()
     except: pass
     try:
-        return urllib2.urlopen('http://api.externalip.net/ip/').read()
+        return urllib2.urlopen('http://api.externalip.net/ip/').read().strip()
     except: pass
     return None
 
@@ -111,7 +111,7 @@ def get_public_ipv6():
       data = urllib2.urlopen("http://icanhazipv6.com").read()
       matches = re.search('<p class="my_address">(.*?)</p>', data)
       if matches:
-          return matches.group(1)
+          return matches.group(1).strip()
     except: pass
     return None
 
