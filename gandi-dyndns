@@ -67,7 +67,7 @@ def main():
 
     for rtype in rtypes:
         if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record, rtype) == False:
-            print >> sys.stderr, (rtype + " Record " + record + " does not exist, please create")
+            print(rtype + " Record " + record + " does not exist, please create", file=sys.stderr)
             usage()
             sys.exit(83)
 
