@@ -50,12 +50,12 @@ def main():
         sys.exit(80)
         
     if domain == None:
-        print >> sys.stderr, ("No Domain specified")
+        print("No Domain specified", file=sys.stderr)
         usage()
         sys.exit(81)
         
     if check_if_domain_exists(apikey, domain) == False:
-        print >> sys.stderr, ("Domain " + domain + " does not exist")
+        print("Domain " + domain + " does not exist", file=sys.stderr)
         usage()
         sys.exit(82)
     
@@ -82,7 +82,7 @@ def main():
             else :
                 address = get_public_ipv6()
         if not address:
-            print >> sys.stderr,  ("Can't find address for record type '" + rtype + "'")
+            print("Can't find address for record type '" + rtype + "'", file=sys.stderr)
             sys.exit(84)
         addresses[rtype] = address
         
