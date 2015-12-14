@@ -1,12 +1,13 @@
 #!/usr/bin/python
 
 import re
-import xmlrpclib
+import xmlrpc
+import xmlrpc.client
 import getopt
 import sys
-import urllib2
+import urllib.request
 
-api = xmlrpclib.ServerProxy('https://rpc.gandi.net/xmlrpc/')
+api = xmlrpc.client.ServerProxy('https://rpc.gandi.net/xmlrpc/')
 
 def main():
     apikey = ''
@@ -38,23 +39,23 @@ def main():
     if opts.quiet: quiet=True
     
     if apikey == None or apikey == '':
-        print >> sys.stderr, ("No Apikey specified")
+        print("No Apikey specified", file=sys.stderr)
         usage()
         sys.exit(79)
         
     #This call will always return true. cf comment regarding check_if_apikey_exists    
     if check_if_apikey_exists(apikey) == False:
-        print >> sys.stderr, ("Apikey " + apikey + " does not exist or is malformed")
+        print("Apikey " + apikey + " does not exist or is malformed", file=sys.stderr)
         usage()
         sys.exit(80)
         
     if domain == None:
-        print >> sys.stderr, ("No Domain specified")
+        print("No Domain specified", file=sys.stderr)
         usage()
         sys.exit(81)
         
     if check_if_domain_exists(apikey, domain) == False:
-        print >> sys.stderr, ("Domain " + domain + " does not exist")
+        print("Domain " + domain + " does not exist", file=sys.stderr)
         usage()
         sys.exit(82)
     
@@ -66,7 +67,7 @@ def main():
 
     for rtype in rtypes:
         if check_if_record_exists(apikey, get_zoneid_by_domain(apikey, domain), record, rtype) == False:
-            print >> sys.stderr, (rtype + " Record " + record + " does not exist, please create")
+            print(rtype + " Record " + record + " does not exist, please create", file=sys.stderr)
             usage()
             sys.exit(83)
 
@@ -81,7 +82,7 @@ def main():
             else :
                 address = get_public_ipv6()
         if not address:
-            print >> sys.stderr,  ("Can't find address for record type '" + rtype + "'")
+            print("Can't find address for record type '" + rtype + "'", file=sys.stderr)
             sys.exit(84)
         addresses[rtype] = address
         
@@ -103,7 +104,7 @@ def main():
         # Update the record for the zone id and zone version
         update_record(apikey, zone_id, version_id, record, rtype, addresses[rtype])
         if not quiet:
-			print record + " " + rtype + " " + addresses[rtype]
+            print(record + " " + rtype + " " + addresses[rtype])
 
     # Activate the new zone
     api.domain.zone.version.set(apikey, zone_id, version_id)
