@@ -15,6 +15,9 @@ API Key (Apply here: https://www.gandi.net/admin/api_key)
 
 gandi-dyndns --api=APIKEY --domain=DOMAIN --record=RECORD
 
+Example: gandi-dyndns --api=eRidBf1RNyTEFwirjNA7eNeu --domain=example.com --record=@
+Crontab example (run gandi-dyndns every 5 min): */5 * * * * gandi-dyndns --api=eRidBf1RNyTEFwirjNA7eNeu --domain=example.com --record=@
+
 --- Readme ---
 
 Currently very lazy but working mode. 
