@@ -132,16 +132,16 @@ def get_zoneid_by_domain(apikey, domain):
 
 def get_public_ipv4():
     try:
-      data= urllib2.urlopen('http://checkip.dyndns.com/').read()
-      matchip = re.search('<body>Current IP Address: (.*?)</body>', data)
+      data= urllib2.urlopen('https://ipv4.icanhazip.com/').read()
+      matchip = re.search('([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)', data)
       if matchip:
           return matchip.group(1)
     except: pass
     return None
 
 def get_public_ipv6():
-    data = urllib2.urlopen("http://icanhazipv6.com").read()
-    matches = re.search('<p class="my_address">(.*?)</p>', data)
+    data = urllib2.urlopen('https://ipv6.icanhazip.com/').read()
+    matches = re.search('([0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+)', data)
     if matches:
         return matches.group(1)
     return None
