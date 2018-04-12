@@ -88,13 +88,14 @@ def main():
     # Fetch the active zone id
     zone_id = get_zoneid_by_domain(apikey, domain)
     
-    # Check if the current IPv4 address changed
+    # Check if the current IPv4 or IPv6 address changed
+    ip_changed = False
     for rtype in rtypes:
-        ip_changed = check_if_ip_changed(apikey, zone_id, record, rtype, addresses[rtype])
-        if not ip_changed:
-            if not quiet:
-                print ("The IP for '" + record + "' did not change")
-            sys.exit(0) 
+        ip_changed = ip_changed or check_if_ip_changed(apikey, zone_id, record, rtype, addresses[rtype])
+    if not ip_changed:
+        if not quiet:
+            print ("The IP for '" + record + "' did not change")
+        sys.exit(0)
     
     # Create a new zone version for zone id
     version_id = create_new_zone_version(apikey, zone_id)
