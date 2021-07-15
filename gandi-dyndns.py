@@ -53,7 +53,7 @@ def main():
     quiet=False
 
     optp = OptionParser()
-    optp.add_option('-a', '--apikey', help='Specify API key')
+    optp.add_option('-a', '--api', help='Specify API key')
     optp.add_option('-d', '--domain', help='Specify domain')
     optp.add_option('-4', '--ipv4', help='Enable IPv4', action='store_true')
     optp.add_option('-6', '--ipv6', help='Enable IPv6', action='store_true')
@@ -67,7 +67,7 @@ def main():
     if opts.ipv4: rtypes.append('A')
     if opts.ipv6: rtypes.append('AAAA')
     domain = opts.domain
-    apikey = opts.apikey
+    apikey = opts.api
     record = opts.record
     extip4 = opts.extip4
     extip6 = opts.extip6
