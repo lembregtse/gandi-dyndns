@@ -120,7 +120,7 @@ def main():
 
         if public_ip in record_data['rrset_values']:
             if not quiet:
-                print('The public IP address for ' + record + ' record did not change: ' + public_ip)
+                print('The public IP address for ' + rtype + ' record did not change: ' + public_ip)
         else:
             if not quiet:
                 print('Updating "' + record + '" ' + rtype + ' record: ' + record_data['rrset_values'][0] + ' -> ' + public_ip)
